@@ -3,8 +3,7 @@ import SceneKit
 import simd
 
 func hideKeyboard() {
-    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
-                                    to: nil, from: nil, for: nil)
+    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
 }
 
 struct SceneViewWrapper: UIViewRepresentable {
@@ -15,7 +14,6 @@ struct SceneViewWrapper: UIViewRepresentable {
         let scnView = SCNView()
         scnView.scene = scene
         scnView.allowsCameraControl = true
-        
         
         let tapGesture = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap(_:)))
         scnView.addGestureRecognizer(tapGesture)
@@ -71,16 +69,12 @@ struct ContentView: View {
     @State private var showBodyInfo = false
     
     @State private var newBodyColor: Color = .orange
-    
+
     @State private var selectedShape: ShapeType = .sphere
     
     @State private var selectedForce: SIMD3<Float> = .zero
     @State private var selectedAcceleration: SIMD3<Float> = .zero
-    
-    
-    @State private var maxInteractionsInput: String = ""
-    
-    
+
     var canAddBody: Bool {
         Float(massInput) != nil && Float(sizeInput) != nil
     }
@@ -92,11 +86,11 @@ struct ContentView: View {
                     selectedBody = body
                     showBodyInfo = true
                     
-                    if let engine = engine {
-                        let result = engine.forceAndAcceleration(for: body)
-                        selectedForce = result.force
-                        selectedAcceleration = result.acceleration
-                    }
+                            if let engine = engine {
+                                let result = engine.forceAndAcceleration(for: body)
+                                selectedForce = result.force
+                                selectedAcceleration = result.acceleration
+                            }
                 }
             }
             .edgesIgnoringSafeArea(.all)
@@ -115,16 +109,6 @@ struct ContentView: View {
                     Text("Ускорение:")
                     Text("ax \(String(format: "%.2f", selectedAcceleration.x))  ay \(String(format: "%.2f", selectedAcceleration.y))  az \(String(format: "%.2f", selectedAcceleration.z))")
                     
-                    Button(body.isDeleted ? "Снять пометку" : "Пометить на удаление") {
-                        body.isDeleted.toggle()
-                        if body.isDeleted {
-                            body.showDeleteHighlightDashed()
-                        } else {
-                            body.removeDeleteHighlight()
-                        }
-                    }
-                    .padding(.top, 6)
-                    
                     Button("Закрыть") { showBodyInfo = false }
                 }
                 .padding()
@@ -135,7 +119,6 @@ struct ContentView: View {
                 .padding(.leading, 16)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
             }
-            
             
             VStack {
                 Spacer()
@@ -190,11 +173,6 @@ struct ContentView: View {
                 .padding()
                 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Макс. взаимодействий:")
-                    TextField("без ограничений", text: $maxInteractionsInput)
-                        .keyboardType(.numberPad)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 120)
                     HStack {
                         Text("Общее время:")
                         TextField("20", text: $totalTimeInput)
@@ -238,7 +216,7 @@ struct ContentView: View {
             setupScene()
             setupInitialBodies()
             engine = GravityEngine(bodies: bodies, scene: scene)
-            
+
         }
     }
     
@@ -268,17 +246,17 @@ struct ContentView: View {
                     TextField("Размер", text: $sizeInput)
                     Text("Цвет:")
                     ColorPicker("", selection: $newBodyColor)
-                        .labelsHidden()
+                    .labelsHidden()
                 }
                 Picker("Фигура", selection: $selectedShape) {
-                    ForEach(ShapeType.allCases, id: \.self) { shape in
-                        Text(shape.rawValue).tag(shape)
-                    }
-                }
-                .pickerStyle(.segmented)
-            }
-            .keyboardType(.decimalPad)
-            .textFieldStyle(.roundedBorder)
+                ForEach(ShapeType.allCases, id: \.self) { shape in
+                Text(shape.rawValue).tag(shape)
+                                   }
+                               }
+                        .pickerStyle(.segmented)
+                           }
+                           .keyboardType(.decimalPad)
+                           .textFieldStyle(.roundedBorder)
             
             Button("Добавить") {
                 guard !isPlaying && currentFrame == 0 else { return }
@@ -312,36 +290,23 @@ struct ContentView: View {
             }
         }
     }
-    
+
     func calculateSimulation() {
+            guard let totalTime = Float(totalTimeInput),
+                  let dt = Float(dtInput),
+                  totalTime > 0, dt > 0 else { return }
+
+            engine.dt = dt
+            engine.scene = scene
         
-        for body in bodies where body.isDeleted {
-            body.node.removeFromParentNode()
+            for body in bodies { body.clearTrail() }
+        
+            engine.simulate(totalTime: totalTime)
+            currentFrame = 0
+            engine.goTo(index: 0)
+            isPlaying = false
+            playbackTimer?.invalidate()
         }
-        bodies.removeAll { $0.isDeleted }
-        
-        guard let totalTime = Float(totalTimeInput),
-              let dt = Float(dtInput),
-              totalTime > 0, dt > 0 else { return }
-        
-        engine.dt = dt
-        engine.scene = scene
-        
-        for body in bodies { body.clearTrail() }
-        
-        if let maxN = Int(maxInteractionsInput), maxN > 0 {
-            engine.maxInteractionsPerBody = maxN
-        } else {
-            engine.maxInteractionsPerBody = nil
-        }
-        
-        
-        engine.simulate(totalTime: totalTime)
-        currentFrame = 0
-        engine.goTo(index: 0)
-        isPlaying = false
-        playbackTimer?.invalidate()
-    }
     
     func togglePlayback() {
         guard let engine = engine else { return }
@@ -361,7 +326,7 @@ struct ContentView: View {
                         selectedForce = result.force
                         selectedAcceleration = result.acceleration
                     }
-                    
+
                 } else {
                     isPlaying = false
                     playbackTimer?.invalidate()
@@ -377,90 +342,90 @@ struct ContentView: View {
     }
     
     func setupInitialBodies() {
-        func uniqueColor(index: Int, total: Int) -> UIColor {
-            return UIColor(
-                hue: CGFloat(index) / CGFloat(total),
-                saturation: 0.8,
-                brightness: 0.9,
-                alpha: 1.0
-            )
+            func uniqueColor(index: Int, total: Int) -> UIColor {
+                return UIColor(
+                    hue: CGFloat(index) / CGFloat(total),
+                    saturation: 0.8,
+                    brightness: 0.9,
+                    alpha: 1.0
+                )
+            }
+            
+            let positions: [SIMD3<Float>] = [
+                SIMD3<Float>(2, 0, 0),
+                SIMD3<Float>(10, 0, 0),
+                SIMD3<Float>(0, 5, 0)
+            ]
+            
+            let velocities: [SIMD3<Float>] = [
+                SIMD3<Float>(0, 0, 0),
+                SIMD3<Float>(0, 0, 0),
+                SIMD3<Float>(0, 0, 0)
+            ]
+            
+            let masses: [Float] = [10, 15, 8]
+            let sizes: [CGFloat] = [1.0, 1.2, 0.8]
+            let shapes: [ShapeType] = [.sphere, .box, .cylinder]
+
+            bodies = []
+
+            for i in 0..<3 {
+                let color = uniqueColor(index: i, total: 3)
+                let body = CelestialBody(
+                    name: "Body\(i+1)",
+                    mass: masses[i],
+                    position: positions[i],
+                    velocity: velocities[i],
+                    shape: shapes[i],
+                    size: sizes[i],
+                    color: color
+                )
+                
+                bodies.append(body)
+                scene.rootNode.addChildNode(body.node)
+            }
         }
-        
-        let positions: [SIMD3<Float>] = [
-            SIMD3<Float>(2, 0, 0),
-            SIMD3<Float>(10, 0, 0),
-            SIMD3<Float>(0, 5, 0)
-        ]
-        
-        let velocities: [SIMD3<Float>] = [
-            SIMD3<Float>(0, 0, 0),
-            SIMD3<Float>(0, 0, 0),
-            SIMD3<Float>(0, 0, 0)
-        ]
-        
-        let masses: [Float] = [10, 15, 8]
-        let sizes: [CGFloat] = [1.0, 1.2, 0.8]
-        let shapes: [ShapeType] = [.sphere, .box, .cylinder]
-        
-        bodies = []
-        
-        for i in 0..<3 {
-            let color = uniqueColor(index: i, total: 3)
+
+    func addBody() {
+            guard let mass = Float(massInput),
+                  let sizeValue = Float(sizeInput) else { return }
+            
+            let x = Float(posXInput) ?? 0
+            let y = Float(posYInput) ?? 0
+            let z = Float(posZInput) ?? 0
+            let vx = Float(velXInput) ?? 0
+            let vy = Float(velYInput) ?? 0
+            let vz = Float(velZInput) ?? 0
+            let size = CGFloat(sizeValue)
+            
             let body = CelestialBody(
-                name: "Body\(i+1)",
-                mass: masses[i],
-                position: positions[i],
-                velocity: velocities[i],
-                shape: shapes[i],
-                size: sizes[i],
-                color: color
+                name: "Body\(bodies.count + 1)",
+                mass: mass,
+                position: SIMD3<Float>(x, y, z),
+                velocity: SIMD3<Float>(vx, vy, vz),
+                shape: selectedShape,
+                size: size,
+                color: UIColor(newBodyColor)
             )
             
             bodies.append(body)
             scene.rootNode.addChildNode(body.node)
+            engine = GravityEngine(bodies: bodies, scene: scene)
+            
+            currentFrame = 0
+            isPlaying = false
+            playbackTimer?.invalidate()
+            
+            massInput = ""
+            posXInput = ""
+            posYInput = ""
+            posZInput = ""
+            velXInput = ""
+            velYInput = ""
+            velZInput = ""
+            sizeInput = ""
+            newBodyColor = .orange
         }
-    }
-    
-    func addBody() {
-        guard let mass = Float(massInput),
-              let sizeValue = Float(sizeInput) else { return }
-        
-        let x = Float(posXInput) ?? 0
-        let y = Float(posYInput) ?? 0
-        let z = Float(posZInput) ?? 0
-        let vx = Float(velXInput) ?? 0
-        let vy = Float(velYInput) ?? 0
-        let vz = Float(velZInput) ?? 0
-        let size = CGFloat(sizeValue)
-        
-        let body = CelestialBody(
-            name: "Body\(bodies.count + 1)",
-            mass: mass,
-            position: SIMD3<Float>(x, y, z),
-            velocity: SIMD3<Float>(vx, vy, vz),
-            shape: selectedShape,
-            size: size,
-            color: UIColor(newBodyColor)
-        )
-        
-        bodies.append(body)
-        scene.rootNode.addChildNode(body.node)
-        engine = GravityEngine(bodies: bodies, scene: scene)
-        
-        currentFrame = 0
-        isPlaying = false
-        playbackTimer?.invalidate()
-        
-        massInput = ""
-        posXInput = ""
-        posYInput = ""
-        posZInput = ""
-        velXInput = ""
-        velYInput = ""
-        velZInput = ""
-        sizeInput = ""
-        newBodyColor = .orange
-    }
     
     func setupCamera(scene: SCNScene) {
         let cameraNode = SCNNode()
@@ -517,4 +482,3 @@ struct ContentView: View {
 #Preview {
     ContentView()
 }
-

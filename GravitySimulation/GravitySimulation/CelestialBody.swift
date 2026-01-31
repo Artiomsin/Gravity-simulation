@@ -1,8 +1,6 @@
-
 import SceneKit
 import simd
 import UIKit
-
 
 enum ShapeType: String, CaseIterable {
     case sphere = "Сфера"
@@ -48,7 +46,7 @@ class CelestialBody {
         self.velocity = velocity
         self.originalColor = color
 
-        let geometry = CelestialBody.makeGeometry(shape: shape, size: size, color: color) // 🔹 ИЗМЕНЕНО
+        let geometry = CelestialBody.makeGeometry(shape: shape, size: size, color: color)
         self.node = SCNNode(geometry: geometry)
         self.node.position = SCNVector3(position.x, position.y, position.z)
         
@@ -193,4 +191,3 @@ class CelestialBody {
     }
 
 }
-
