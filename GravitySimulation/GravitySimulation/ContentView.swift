@@ -3,7 +3,8 @@ import SceneKit
 import simd
 
 func hideKeyboard() {
-UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),to: nil, from: nil, for: nil)
+    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
+                                    to: nil, from: nil, for: nil)
 }
 
 struct SceneViewWrapper: UIViewRepresentable {
@@ -11,9 +12,10 @@ struct SceneViewWrapper: UIViewRepresentable {
     var onTapNode: ((SCNNode) -> Void)?
     
     func makeUIView(context: Context) -> SCNView {
-        let scnView=SCNView()
-        scnView.scene=scene
-        scnView.allowsCameraControl=true
+        let scnView = SCNView()
+        scnView.scene = scene
+        scnView.allowsCameraControl = true
+        
         
         let tapGesture = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap(_:)))
         scnView.addGestureRecognizer(tapGesture)
@@ -29,12 +31,12 @@ struct SceneViewWrapper: UIViewRepresentable {
     
     class Coordinator: NSObject {
         var parent: SceneViewWrapper
-        init(_ parent: SceneViewWrapper) { self.parent=parent}
+        init(_ parent: SceneViewWrapper) { self.parent = parent }
         
         @objc func handleTap(_ gesture: UITapGestureRecognizer) {
-            guard let scnView=gesture.view as? SCNView else { return }
-            let location=gesture.location(in: scnView)
-            let hits=scnView.hitTest(location, options: nil)
+            guard let scnView = gesture.view as? SCNView else { return }
+            let location = gesture.location(in: scnView)
+            let hits = scnView.hitTest(location, options: nil)
             if let node = hits.first?.node {
                 parent.onTapNode?(node)
             }
@@ -43,53 +45,87 @@ struct SceneViewWrapper: UIViewRepresentable {
 }
 
 struct ContentView: View {
-    @State var bodies: [CelestialBody]=[]
-    @State private var showControls=false
+    @State var bodies: [CelestialBody] = []
+    @State private var showControls = false
     
-    @State private var massInput=""
-    @State private var posXInput=""
-    @State private var posYInput=""
-    @State private var posZInput=""
-    @State private var velXInput=""
-    @State private var velYInput=""
-    @State private var velZInput=""
-    @State private var radiusInput=""
+    @State private var massInput = ""
+    @State private var posXInput = ""
+    @State private var posYInput = ""
+    @State private var posZInput = ""
+    @State private var velXInput = ""
+    @State private var velYInput = ""
+    @State private var velZInput = ""
+    @State private var sizeInput = ""
     
-    @State private var scene=SCNScene()
+    @State private var scene = SCNScene()
     @State private var engine: GravityEngine!
     
-    @State private var totalTimeInput: String="10"
-    @State private var dtInput: String="0.02"
-    @State private var timeScale: Float=1.0
-    @State private var currentFrame: Int=0
-    @State private var isPlaying=false
+    @State private var totalTimeInput: String = "10"
+    @State private var dtInput: String = "0.02"
+    @State private var timeScale: Float = 1.0
+    @State private var currentFrame: Int = 0
+    @State private var isPlaying = false
     @State private var playbackTimer: Timer?
     
-    @State private var selectedBody: CelestialBody?=nil
-    @State private var showBodyInfo=false
+    @State private var selectedBody: CelestialBody? = nil
+    @State private var showBodyInfo = false
+    
+    @State private var newBodyColor: Color = .orange
+    
+    @State private var selectedShape: ShapeType = .sphere
+    
+    @State private var selectedForce: SIMD3<Float> = .zero
+    @State private var selectedAcceleration: SIMD3<Float> = .zero
+    
+    
+    @State private var maxInteractionsInput: String = ""
+    
     
     var canAddBody: Bool {
-        Float(massInput) != nil && Float(radiusInput) != nil
+        Float(massInput) != nil && Float(sizeInput) != nil
     }
     
     var body: some View {
         ZStack {
             SceneViewWrapper(scene: scene) { tappedNode in
-                if let body=bodies.first(where: { $0.node == tappedNode || $0.node.childNodes.contains(tappedNode) }) {
-                    selectedBody=body
-                    showBodyInfo=true
+                if let body = bodies.first(where: { $0.node == tappedNode || $0.node.childNodes.contains(tappedNode) }) {
+                    selectedBody = body
+                    showBodyInfo = true
+                    
+                    if let engine = engine {
+                        let result = engine.forceAndAcceleration(for: body)
+                        selectedForce = result.force
+                        selectedAcceleration = result.acceleration
+                    }
                 }
             }
             .edgesIgnoringSafeArea(.all)
             
-            // Overlay информации о выбранном теле
-            if showBodyInfo, let body=selectedBody {
+            if showBodyInfo, let body = selectedBody {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("\(body.name)").font(.headline)
+                    Text("Фигура: \(body.shape.rawValue)")
+                    Text("Размер: \(String(format: "%.2f", body.size))")
                     Text("Масса: \(String(format: "%.2f", body.mass))")
                     Text("Позиция: x \(String(format: "%.2f", body.position.x)), y \(String(format: "%.2f", body.position.y)), z \(String(format: "%.2f", body.position.z))")
                     Text("Скорость: vx \(String(format: "%.2f", body.velocity.x)), vy \(String(format: "%.2f", body.velocity.y)), vz \(String(format: "%.2f", body.velocity.z))")
-                    Button("Закрыть") { showBodyInfo=false }
+                    Text("Сила:")
+                    Text("Fx \(String(format: "%.2f", selectedForce.x))  Fy \(String(format: "%.2f", selectedForce.y))  Fz \(String(format: "%.2f", selectedForce.z))")
+                    
+                    Text("Ускорение:")
+                    Text("ax \(String(format: "%.2f", selectedAcceleration.x))  ay \(String(format: "%.2f", selectedAcceleration.y))  az \(String(format: "%.2f", selectedAcceleration.z))")
+                    
+                    Button(body.isDeleted ? "Снять пометку" : "Пометить на удаление") {
+                        body.isDeleted.toggle()
+                        if body.isDeleted {
+                            body.showDeleteHighlightDashed()
+                        } else {
+                            body.removeDeleteHighlight()
+                        }
+                    }
+                    .padding(.top, 6)
+                    
+                    Button("Закрыть") { showBodyInfo = false }
                 }
                 .padding()
                 .background(.ultraThinMaterial)
@@ -99,12 +135,14 @@ struct ContentView: View {
                 .padding(.leading, 16)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
             }
+            
+            
             VStack {
                 Spacer()
                 HStack {
                     Spacer()
                     Button {
-                        withAnimation { showControls=true }
+                        withAnimation { showControls = true }
                     } label: {
                         Image(systemName: "plus.circle.fill")
                             .resizable()
@@ -114,11 +152,12 @@ struct ContentView: View {
                     }
                 }
             }
+            
             if showControls {
                 Color.black.opacity(0.25)
                     .ignoresSafeArea()
                     .onTapGesture {
-                        withAnimation { showControls=false }
+                        withAnimation { showControls = false }
                     }
             }
             
@@ -151,6 +190,11 @@ struct ContentView: View {
                 .padding()
                 
                 VStack(alignment: .leading, spacing: 8) {
+                    Text("Макс. взаимодействий:")
+                    TextField("без ограничений", text: $maxInteractionsInput)
+                        .keyboardType(.numberPad)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 120)
                     HStack {
                         Text("Общее время:")
                         TextField("20", text: $totalTimeInput)
@@ -172,10 +216,9 @@ struct ContentView: View {
                     
                     Slider(value: Binding(
                         get: { Double(timeScale) },
-                        set: { timeScale=Float($0) }
+                        set: { timeScale = Float($0) }
                     ), in: 0.25...5.0)
                     
-                    //Таймлайн
                     if let engine = engine {
                         Slider(value: Binding(
                             get: { Double(currentFrame) },
@@ -194,8 +237,8 @@ struct ContentView: View {
         .onAppear {
             setupScene()
             setupInitialBodies()
-            engine=GravityEngine(bodies: bodies, scene: scene)
-
+            engine = GravityEngine(bodies: bodies, scene: scene)
+            
         }
     }
     
@@ -222,8 +265,17 @@ struct ContentView: View {
                 }
                 HStack(spacing: 8) {
                     TextField("M", text: $massInput)
-                    TextField("R", text: $radiusInput)
+                    TextField("Размер", text: $sizeInput)
+                    Text("Цвет:")
+                    ColorPicker("", selection: $newBodyColor)
+                        .labelsHidden()
                 }
+                Picker("Фигура", selection: $selectedShape) {
+                    ForEach(ShapeType.allCases, id: \.self) { shape in
+                        Text(shape.rawValue).tag(shape)
+                    }
+                }
+                .pickerStyle(.segmented)
             }
             .keyboardType(.decimalPad)
             .textFieldStyle(.roundedBorder)
@@ -231,7 +283,7 @@ struct ContentView: View {
             Button("Добавить") {
                 guard !isPlaying && currentFrame == 0 else { return }
                 addBody()
-                withAnimation(.easeOut) { showControls=false }
+                withAnimation(.easeOut) { showControls = false }
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
@@ -241,7 +293,7 @@ struct ContentView: View {
             .disabled(!canAddBody || isPlaying || currentFrame != 0)
             
             Button("Отмена") {
-                withAnimation(.easeOut) { showControls=false }
+                withAnimation(.easeOut) { showControls = false }
             }
             .foregroundColor(.secondary)
             .padding(.bottom, 12)
@@ -260,24 +312,36 @@ struct ContentView: View {
             }
         }
     }
-
-   
+    
     func calculateSimulation() {
-            guard let totalTime = Float(totalTimeInput),
-                  let dt = Float(dtInput),
-                  totalTime > 0, dt > 0 else { return }
-
-            engine.dt = dt
-            engine.scene = scene
         
-            for body in bodies { body.clearTrail() }
-        
-            engine.simulate(totalTime: totalTime)
-            currentFrame = 0
-            engine.goTo(index: 0)
-            isPlaying = false
-            playbackTimer?.invalidate()
+        for body in bodies where body.isDeleted {
+            body.node.removeFromParentNode()
         }
+        bodies.removeAll { $0.isDeleted }
+        
+        guard let totalTime = Float(totalTimeInput),
+              let dt = Float(dtInput),
+              totalTime > 0, dt > 0 else { return }
+        
+        engine.dt = dt
+        engine.scene = scene
+        
+        for body in bodies { body.clearTrail() }
+        
+        if let maxN = Int(maxInteractionsInput), maxN > 0 {
+            engine.maxInteractionsPerBody = maxN
+        } else {
+            engine.maxInteractionsPerBody = nil
+        }
+        
+        
+        engine.simulate(totalTime: totalTime)
+        currentFrame = 0
+        engine.goTo(index: 0)
+        isPlaying = false
+        playbackTimer?.invalidate()
+    }
     
     func togglePlayback() {
         guard let engine = engine else { return }
@@ -292,6 +356,12 @@ struct ContentView: View {
                 if currentFrame < engine.totalFrames - 1 {
                     currentFrame += 1
                     engine.goTo(index: currentFrame, showTrail: true)
+                    if let body = selectedBody {
+                        let result = engine.forceAndAcceleration(for: body)
+                        selectedForce = result.force
+                        selectedAcceleration = result.acceleration
+                    }
+                    
                 } else {
                     isPlaying = false
                     playbackTimer?.invalidate()
@@ -299,7 +369,7 @@ struct ContentView: View {
             }
         }
     }
-
+    
     func setupScene() {
         setupCamera(scene: scene)
         setupLight(scene: scene)
@@ -307,46 +377,53 @@ struct ContentView: View {
     }
     
     func setupInitialBodies() {
-        let body1 = CelestialBody(
-            name: "Body1",
-            mass: 10,
-            position: SIMD3<Float>(2, 0, 0),
-            velocity: SIMD3<Float>(0, 0, 0),
+        func uniqueColor(index: Int, total: Int) -> UIColor {
+            return UIColor(
+                hue: CGFloat(index) / CGFloat(total),
+                saturation: 0.8,
+                brightness: 0.9,
+                alpha: 1.0
+            )
+        }
+        
+        let positions: [SIMD3<Float>] = [
+            SIMD3<Float>(2, 0, 0),
+            SIMD3<Float>(10, 0, 0),
+            SIMD3<Float>(0, 5, 0)
+        ]
+        
+        let velocities: [SIMD3<Float>] = [
+            SIMD3<Float>(0, 0, 0),
+            SIMD3<Float>(0, 0, 0),
+            SIMD3<Float>(0, 0, 0)
+        ]
+        
+        let masses: [Float] = [10, 15, 8]
+        let sizes: [CGFloat] = [1.0, 1.2, 0.8]
+        let shapes: [ShapeType] = [.sphere, .box, .cylinder]
+        
+        bodies = []
+        
+        for i in 0..<3 {
+            let color = uniqueColor(index: i, total: 3)
+            let body = CelestialBody(
+                name: "Body\(i+1)",
+                mass: masses[i],
+                position: positions[i],
+                velocity: velocities[i],
+                shape: shapes[i],
+                size: sizes[i],
+                color: color
+            )
             
-            radius: 1.0,
-            color: .red
-        )
-        
-        let body2 = CelestialBody(
-            name: "Body2",
-            mass: 15,
-            position: SIMD3<Float>(10, 0, 0),
-            velocity: SIMD3<Float>(0, 0, 0),
-            
-            radius: 1.2,
-            color: .yellow
-        )
-        
-        let body3 = CelestialBody(
-            name: "Body3",
-            mass: 8,
-            position: SIMD3<Float>(0, 5, 0),
-            velocity: SIMD3<Float>(0, 0, 0),
-            
-            radius: 0.8,
-            color: .purple
-        )
-        
-        bodies = [body1, body2, body3]
-        
-        for body in bodies {
+            bodies.append(body)
             scene.rootNode.addChildNode(body.node)
         }
     }
     
     func addBody() {
         guard let mass = Float(massInput),
-              let radiusValue = Float(radiusInput) else { return }
+              let sizeValue = Float(sizeInput) else { return }
         
         let x = Float(posXInput) ?? 0
         let y = Float(posYInput) ?? 0
@@ -354,30 +431,25 @@ struct ContentView: View {
         let vx = Float(velXInput) ?? 0
         let vy = Float(velYInput) ?? 0
         let vz = Float(velZInput) ?? 0
-        let radius = CGFloat(radiusValue)
+        let size = CGFloat(sizeValue)
         
         let body = CelestialBody(
             name: "Body\(bodies.count + 1)",
             mass: mass,
             position: SIMD3<Float>(x, y, z),
             velocity: SIMD3<Float>(vx, vy, vz),
-            
-            radius: radius,
-            color: UIColor(
-                hue: CGFloat(bodies.count) / 10.0,
-                saturation: 0.8,
-                brightness: 0.9,
-                alpha: 1.0
-            )
+            shape: selectedShape,
+            size: size,
+            color: UIColor(newBodyColor)
         )
         
         bodies.append(body)
         scene.rootNode.addChildNode(body.node)
         engine = GravityEngine(bodies: bodies, scene: scene)
-
-                currentFrame = 0
-                isPlaying = false
-                playbackTimer?.invalidate()
+        
+        currentFrame = 0
+        isPlaying = false
+        playbackTimer?.invalidate()
         
         massInput = ""
         posXInput = ""
@@ -386,7 +458,8 @@ struct ContentView: View {
         velXInput = ""
         velYInput = ""
         velZInput = ""
-        radiusInput = ""
+        sizeInput = ""
+        newBodyColor = .orange
     }
     
     func setupCamera(scene: SCNScene) {
@@ -444,6 +517,4 @@ struct ContentView: View {
 #Preview {
     ContentView()
 }
-
-
 
