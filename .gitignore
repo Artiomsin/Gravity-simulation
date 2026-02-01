@@ -1,9 +1,8 @@
 # Xcode
-<<<<<<< HEAD
-=======
 .DS_Store
->>>>>>> test
-#
+build/
+DerivedData/
+
 # gitignore contributors: remember to update Global/Xcode.gitignore, Objective-C.gitignore & Swift.gitignore
 
 ## User settings
@@ -64,3 +63,9 @@ fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
+
+# Video files (from test branch)
+*.mp4
+*.mp4.zip
+*.mov
+*.avi
