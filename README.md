@@ -1,11 +1,14 @@
-# Gravity-simulation
-Test task: Simulation of the gravitational interaction of bodies. It is necessary to implement a simulation of the gravitational interaction of bodies.
-=======
 # Gravity Simulator 3D (SwiftUI + SceneKit)
 
 Интерактивный 3D-симулятор гравитационного движения тел с реалистичными столкновениями, визуализацией траекторий и эффектами ударной волны.
 
----
+<table>
+  <tr>
+    <td><img width="300" src="https://github.com/user-attachments/assets/905e2f87-5e88-434c-864f-ef9ec206cc73" /></td>
+    <td><img width="300" src="https://github.com/user-attachments/assets/034e8f6b-4e8b-4a45-b6a1-fdef3e518972" /></td>
+    <td><img width="300" src="https://github.com/user-attachments/assets/c8920182-23a6-4a01-aadb-26f275c1d9ce" /></td>
+  </tr>
+</table>
 
 ## Основные возможности
 
